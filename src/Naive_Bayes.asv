@@ -1,0 +1,130 @@
+% To classify a given object the system will guess using the follow data:
+% -> redshift: the main divider:
+%               -> Is higher in quasars and almost irrelevant to stars
+% -> several zones of the spectro
+%               -> This zones of the spectro is what it was used to know
+%               what object it is. This makes a signatura of the object
+%               -> We will teach the system to read this spectro and
+%               identify what is the mosto probable object type(class)
+%               using Naive Bayes
+
+
+% Caracteristics
+% -> Stars
+%   -> Hot Stars
+%       -> emits more blue and ultraviolette radiation
+%   -> Cold Stars
+%       -> emits more red and infra-red radiation
+%   -> redshift is not relevant here because it transmits not enougth light
+
+% -> Galaxies
+%   -> Galaxies depends on the number of solar systems and stars inside it
+%       -> If there's a few solar systems or multiples red stars(colder)
+%           -> emits more red and infra-red radiation
+%       -> else
+%           -> emits more blue and ultraviolette radiation
+%   -> redshift here is basically the sum of all redsifts emited by the 
+%   multiple stars inside it so it is higher but not that much
+
+% -> Quasars
+%   -> This are the most luminous objects in the universe. Probably nowdays
+%   this fenomeno does not exists once the closest that we have discover is
+%   at 780 milion l.y from earth
+%   -> It has a strong and caothic emission
+%   -> redshift very high
+classdef Naive_Bayes
+    properties
+        DataSet
+        Data
+        Prob_Class
+    end
+    methods
+        function obj=Naive_Bayes(data)
+            %filter for Naive_Bayes classifier calculation 
+            obj.DataSet = data(:, [ ...
+                "class", ...            %class
+                "z", ...                %redshift
+                "spectroFlux_u", ...    %ultraviolet
+                "spectroFlux_g", ...    %blue or violette
+                "spectroFlux_r", ...    %red
+                "spectroFlux_i", ...    %high infra-red
+                "spectroFlux_z", ...    %low infra-red
+                "velDisp", ...          %dispersion level
+                "snMedian_r" ...        %precision
+                ]);
+            obj.Prob_Class=table();
+            obj.Data=table();
+        end
+      
+        %here will be the function to analyse the spectrum 
+        % vector=[flux_u, flux_g, flux_r, flux_i, flux_z]        
+        % after comparation-> vector=(i-z , r-i , g-r , u-g)
+        function [diferences]=compareSpectros(obj,spectro)
+            diferences=zeros(size(spectro,1),4);
+            diferences(:,1) = -2.5 * log10((spectro(:,1)+eps) ./ (spectro(:,2)+eps)); % u-g  
+            diferences(:,2) = -2.5 * log10((spectro(:,2)+eps) ./ (spectro(:,3)+eps)); % g-r 
+            diferences(:,3) = -2.5 * log10((spectro(:,3)+eps) ./ (spectro(:,4)+eps)); % r-i
+            diferences(:,4) = -2.5 * log10((spectro(:,4)+eps) ./ (spectro(:,5)+eps)); % i-z
+        end
+        
+        %here we will join everything and buil the feature table, where the
+        %Naive Bayes algorithm will learn to classify the objects though
+        %their spectro
+        function obj=buildFeature(obj)
+            %first get each flux data from the dataSet
+            u=obj.DataSet.spectroFlux_u;
+            g=obj.DataSet.spectroFlux_g;
+            r=obj.DataSet.spectroFlux_r;
+            i=obj.DataSet.spectroFlux_i;
+            z=obj.DataSet.spectroFlux_z;
+
+            %then build the spectral matrix
+            spectro=[
+                u ...
+                g ...
+                r ...
+                i ...
+                z 
+            ];
+            %analyse the spetros
+            colorFeatures=obj.compareSpectros(spectro);
+
+            %build the feature data table
+            obj.Data=table( ...
+                obj.DataSet.class, ...
+                obj.DataSet.z, ...
+                colorFeatures(:,1), ...
+                colorFeatures(:,2), ...
+                colorFeatures(:,3), ...
+                colorFeatures(:,4), ...
+                obj.DataSet.velDisp, ...
+                obj.DataSet.snMedian_r, ...
+                'VariableNames', { ...
+                    'class', ...
+                    'redshift', ...
+                    'u_g', ...
+                    'g_r', ...
+                    'r_i', ...
+                    'i_z', ...
+                    'velDisp', ...
+                    'snMedian_r' ...
+            });
+        end
+
+        %Obtains the occurence of each class
+        function obj=getEachClassesData(obj)    
+            classes_data=obj.DataSet.class;
+            classes=unique(classes_data);
+            probs=zeros(1,length(classes));
+            for i=1:length(classes)
+                occurs=sum(classes_data==classes(i));
+                probs(i) = occurs/length(classes_data);
+            end
+
+            obj.Prob_Class=table( ...
+                classes, ...
+                probs, -
+                );
+        end
+    end
+end
