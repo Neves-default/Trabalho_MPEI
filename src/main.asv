@@ -1,0 +1,344 @@
+%=========================================================================
+%================================Naive Bayes==============================
+%=========================================================================
+function [results,times,t,z,vd]=testNaiveBayes(path,numOfTests,Naive_Bayes_with_gassian_log)
+    amountData=20000;
+    columns=["class", ...            %class
+                "z", ...                %redshift
+                "spectroFlux_u", ...    %ultraviolet
+                "spectroFlux_g", ...    %blue or violette
+                "spectroFlux_r", ...    %red
+                "spectroFlux_i", ...    %high infra-red
+                "spectroFlux_z", ...    %low infra-red
+                "velDisp", ...          %dispersion level
+                "snMedian_r"         %precision;
+         ];
+
+    t=tests();
+    t = t.initializeData(path);
+    t=t.dataLoading(amountData,columns);
+    amountLearningData=0;
+    times=zeros(1,numOfTests);
+    %currency according to the learninDataSize
+    for i=1:numOfTests
+        if amountLearningData==15000
+            break;
+        end
+        amountLearningData=i*10;
+        cronometer=tic;
+        [NaiveBayesResult,t]=t.testNaiveBayes(amountLearningData,numOfTests,Naive_Bayes_with_gassian_log,3);
+        times(i)=toc(cronometer);
+        results(i) = sum(diag(NaiveBayesResult))/numOfTests;
+    end
+
+    z=t.redshifts;
+    vd=t.velpdisps;
+    displayGraphics(amountLearningData,results,z,vd,Naive_Bayes_with_gassian_log);
+end
+
+function displayGraphics(amountLearningData,results,z,vd,use_gaussian_log)
+    %plot graphic
+    figure;
+    plot(1:10:amountLearningData,results,'o-')
+    if use_gaussian_log==1
+        title("Learning set size vs Precision(Using Gaussian Log)")
+    else
+        title("Learning set size vs Precision(Without Gaussian Log)")
+    end
+    xlabel("set's size")
+    ylabel("precision")
+
+    z_galaxy=z(1,:);
+    z_star=z(2,:);
+    z_qso=z(3,:);
+    %plot graphic   
+    figure;
+    plot(1:length(z_galaxy), z_galaxy, 'b', 'LineWidth', 1.5);
+    hold on;
+    plot(1:length(z_star), z_star, 'r', 'LineWidth', 1.5);
+    plot(1:length(z_qso), z_qso, 'g', 'LineWidth', 1.5);
+    hold off;
+    if use_gaussian_log==1
+        title('Redshifts comparation per Classe(Using Gaussian Log');
+    else
+        title('Redshifts comparation per Classe(Without Gaussian Log)');
+    end
+    xlabel('Results');
+    ylabel('Redshift (z)');
+    legend('Galaxy', 'Star', 'QSO');
+    grid on;
+
+    vd_galaxy=vd(1,:);
+    vd_star=vd(2,:);
+    vd_qso=vd(3,:);
+    %plot graphic   
+    figure;
+    plot(1:length(vd_galaxy), vd_galaxy, 'b', 'LineWidth', 1.5);
+    hold on;
+    plot(1:length(vd_star), vd_star, 'r', 'LineWidth', 1.5);
+    plot(1:length(vd_qso), vd_qso, 'g', 'LineWidth', 1.5);
+    hold off;
+    if use_gaussian_log==1
+        title('VelDisp comparation per Classe(Using Gaussian Log)');
+    else
+        title('VelDisp comparation per Classe(Without Gaussian Log)');
+    end
+    
+    xlabel('Results');
+    ylabel('VelDisp)');
+    legend('Galaxy', 'Star', 'QSO');
+    grid on;
+end
+
+function showStatisticsNaiveBayes(results,times,t,z,vd)
+    z_galaxy=z(1,:);
+    z_star=z(2,:);
+    z_qso=z(3,:);
+
+    vd_galaxy=vd(1,:);
+    vd_star=vd(2,:);
+    vd_qso=vd(3,:);
+    
+    disp("===============Results================")
+    disp("Distribution")
+    disp("      ->Galaxies:"+(t.distribution(1)/length(results))*100+"%")
+    disp("      ->Star:"+(t.distribution(2)/length(results))*100+"%")
+    disp("      ->Quasar:"+(t.distribution(3)/length(results))*100+"%")
+    disp("AVG Accuracy:"+sum(results)/length(results))
+    disp("AVG Processing Time:"+sum(times)/length(times));
+    disp("AVG redshifts:")
+    disp("      ->Galaxy:"+sum(z_galaxy)/length(z_galaxy))
+    disp("      ->Star:"+sum(z_star)/length(z_star))
+    disp("      ->Quasar:"+sum(z_qso)/length(z_qso))
+    disp("AVG VelDisp:")
+    disp("      ->Galaxy:"+sum(vd_galaxy)/length(vd_galaxy))
+    disp("      ->Star:"+sum(vd_star)/length(vd_star))
+    disp("      ->Quasar:"+sum(vd_qso)/length(vd_qso))
+    disp("======================================")
+end
+%=========================================================================
+%================================Bloon Filter=============================
+%=========================================================================
+function [k,occupancy,fakePositives,negativesTested]=testBloonFilter(amount_of_data,path,n,numElemInsert,numSearches,numK)
+    %test num of positives in function of
+    % num inserts
+    % filter's size
+    % num hashes
+    % num inserts
+    x1=1:numElemInsert;
+    y1=zeros(1,numElemInsert);
+    
+    k = round(n * log(2) / amount_of_data); % Optimal k formula
+    k = max(1, k);
+
+    filterTestInserts=BloomFilter();
+    filterTestInserts=filterTestInserts.getAllData(amount_of_data,path);
+    for i=1:length(x1)
+        filterTestInserts=filterTestInserts.initializeDataStructure(n);
+        filterTestInserts=filterTestInserts.defineParams(k);
+        indxs = randi([1, 50000], 1, i);
+        for j=1:i
+            filterTestInserts=filterTestInserts.addElement(indxs(j));
+        end
+        sndxs = randi([50001, 100000], 1, numSearches);
+        for a=1:numSearches
+            fk=filterTestInserts.isFakePositive(sndxs(a));
+            if (fk==true)
+                y1(i)=y1(i)+1;
+            end
+        end
+    end
+
+    figure;
+    plot(x1,y1,'b','LineWidth',1.5);
+    title("False Positives vs Number of Inserts");
+    xlabel("Number of Inserts");
+    ylabel("False Positives");
+    grid on;
+
+    %size
+    x2=1:n;
+    y2=zeros(1,n);
+
+    filterTestSize=BloomFilter();
+    filterTestSize=filterTestSize.getAllData(amount_of_data,path);
+    for i=1:n
+        filterTestSize=filterTestSize.initializeDataStructure(i);
+        k_i = max(1, round(i * log(2) / numElemInsert));  % k proporcional ao tamanho atual
+        filterTestSize=filterTestSize.defineParams(k_i);
+        
+        indxs = randi([1, 100000], 1, numElemInsert);
+        for j=1:numElemInsert
+            filterTestSize=filterTestSize.addElement(indxs(j));
+        end
+        sndxs = randi([1, 100000], 1, numSearches);
+        for a=1:numSearches
+            fk=filterTestSize.isFakePositive(sndxs(a));
+            if (fk==true)
+                y2(i)=y2(i)+1;
+            end
+        end
+    end
+
+    figure;
+    plot(x2,y2,'b','LineWidth',1.5);
+    title("False Positives vs Filter Size");
+    xlabel("Filter Size");
+    ylabel("False Positives");
+    grid on;
+    %num hashes
+    x3=1:numK;
+    y3=zeros(1,numK);
+
+    filterTestHashes=BloomFilter();
+    filterTestHashes=filterTestHashes.getAllData(amount_of_data,path);
+    for i=1:numK
+        filterTestHashes=filterTestHashes.initializeDataStructure(n);
+        filterTestHashes=filterTestHashes.defineParams(i);
+        
+        indxs = randi([1, 100000], 1, numElemInsert);
+        for j=1:numElemInsert
+            filterTestHashes=filterTestHashes.addElement(indxs(j));
+        end
+        sndxs = randi([1, 100000], 1, numSearches);
+        for a=1:numSearches
+            fk=filterTestHashes.isFakePositive(sndxs(a));
+            if (fk==true)
+                y3(i)=y3(i)+1;
+            end
+        end
+    end
+    figure;
+    plot(x3,y3,'b','LineWidth',1.5);
+    title("False Positives vs Number of Hashes (k)");
+    xlabel("k");
+    ylabel("False Positives");
+    grid on;
+
+    %capture the statistics
+    
+    fakePositives=0;
+    negativesTested=0;
+    k = round(n * log(2) / amount_of_data); % Optimal k formula
+    k = max(1, k);
+    filterTest=BloomFilter();
+    filterTest=filterTest.getAllData(amount_of_data,path);
+    filterTest=filterTest.initializeDataStructure(n);
+    filterTest=filterTest.defineParams(k);
+        
+    indxs = randi([1, 50000], 1, numElemInsert);
+    for j=1:numElemInsert
+        filterTest=filterTest.addElement(indxs(j));
+    end
+    sndxs = randi([50001, 100000], 1, numSearches);
+    for a=1:numSearches
+        fk=filterTest.isFakePositive(sndxs(a));
+        if (fk==true)
+            fakePositives=fakePositives+1;
+        end
+        negativesTested=negativesTested+1;
+    end
+    occupancy=filterTest.getOccupancy();
+    
+end
+
+function displayFakePositivesInserts(amount_of_data,numElemInsert,n,numSearches)
+    % num inserts
+    x1=1:numElemInsert;
+    y1=zeros(1,numElemInsert);
+    
+    k = round(n * log(2) / amount_of_data); % Optimal k formula
+    k = max(1, k);
+
+    filterTestInserts=BloomFilter();
+    filterTestInserts=filterTestInserts.getAllData(amount_of_data,path);
+    for i=1:length(x1)
+        filterTestInserts=filterTestInserts.initializeDataStructure(n);
+        filterTestInserts=filterTestInserts.defineParams(k);
+        indxs = randi([1, 50000], 1, i);
+        for j=1:i
+            filterTestInserts=filterTestInserts.addElement(indxs(j));
+        end
+        sndxs = randi([50001, 100000], 1, numSearches);
+        for a=1:numSearches
+            fk=filterTestInserts.isFakePositive(sndxs(a));
+            if (fk==true)
+                y1(i)=y1(i)+1;
+            end
+        end
+    end
+
+    figure;
+    plot(x1,y1,'b','LineWidth',1.5);
+    title("False Positives vs Number of Inserts");
+    xlabel("Number of Inserts");
+    ylabel("False Positives");
+    grid on;
+end
+
+function displayFakePositiveSize(amount_of_data,n,numElemInsert,numSearches)
+    %size
+    x2=1:n;
+    y2=zeros(1,n);
+
+    filterTestSize=BloomFilter();
+    filterTestSize=filterTestSize.getAllData(amount_of_data,path);
+    for i=1:n
+        filterTestSize=filterTestSize.initializeDataStructure(i);
+        k_i = max(1, round(i * log(2) / numElemInsert));  % k proporcional ao tamanho atual
+        filterTestSize=filterTestSize.defineParams(k_i);
+        
+        indxs = randi([1, 100000], 1, numElemInsert);
+        for j=1:numElemInsert
+            filterTestSize=filterTestSize.addElement(indxs(j));
+        end
+        sndxs = randi([1, 100000], 1, numSearches);
+        for a=1:numSearches
+            fk=filterTestSize.isFakePositive(sndxs(a));
+            if (fk==true)
+                y2(i)=y2(i)+1;
+            end
+        end
+    end
+
+    figure;
+    plot(x2,y2,'b','LineWidth',1.5);
+    title("False Positives vs Filter Size");
+    xlabel("Filter Size");
+    ylabel("False Positives");
+    grid on;
+end
+
+
+function showStatisticsBloomFilter(n,k,occupancy,fakePositives,negativesTested,numElemInsert)
+    disp("===============Results================")
+    disp("Occupancy:"+occupancy*100+"%")
+    disp("False Positives:"+fakePositives)
+    disp("False Positive Rate(observed):"+fakePositives/negativesTested *100)
+    disp("False Positive Rate(theoretical):"+((1 - exp(-k * numElemInsert / n))^k)*100)
+    disp("======================================")
+end
+
+%results for Naive Bayes
+fileName='DataSet.csv';
+pathFile=fullfile('/home/neves-default/Secretária/universidade de Aveiro/2ºano/2º semestre/Metodos_probabilisticos_EI/Projeto/Trabalho_Pratico/',fileName);
+numOfTests=100;
+%With Log Gaussian
+[results,times,t,z,vd]=testNaiveBayes(pathFile,numOfTests,1);
+showStatisticsNaiveBayes(results,times,t,z,vd);
+%Without Log Gaussian
+[results,times,t,z,vd]=testNaiveBayes(pathFile,numOfTests,0);
+showStatisticsNaiveBayes(results,times,t,z,vd);
+%results for Bloom Filter
+amount_of_data=500;
+n=5000;
+numElemInsert=500;
+numSearches=500;
+optimalK=round(n * log(2) / amount_of_data); % Optimal k formula
+numK = max(10, 2 * optimalK);
+[k,occupancy,fakePositives,negativesTested]=testBloonFilter(amount_of_data,pathFile,n,numElemInsert,numSearches,numK);
+
+showStatisticsBloomFilter(n,k,occupancy,fakePositives,negativesTested,numElemInsert)
+
+
+

@@ -44,17 +44,18 @@ classdef Naive_Bayes < handle
     methods
         function obj=Naive_Bayes(data)
             %filter for Naive_Bayes classifier calculation 
-            obj.DataSet = data(:, [ ...
-                "class", ...            %class
-                "z", ...                %redshift
-                "spectroFlux_u", ...    %ultraviolet
-                "spectroFlux_g", ...    %blue or violette
-                "spectroFlux_r", ...    %red
-                "spectroFlux_i", ...    %high infra-red
-                "spectroFlux_z", ...    %low infra-red
-                "velDisp", ...          %dispersion level
-                "snMedian_r" ...        %precision
-                ]);
+            %obj.DataSet = data(:, [ ...
+            %    "class", ...            %class
+            %    "z", ...                %redshift
+            %    "spectroFlux_u", ...    %ultraviolet
+            %    "spectroFlux_g", ...    %blue or violette
+            %    "spectroFlux_r", ...    %red
+            %    "spectroFlux_i", ...    %high infra-red
+            %    "spectroFlux_z", ...    %low infra-red
+            %    "velDisp", ...          %dispersion level
+            %    "snMedian_r" ...        %precision
+            %    ]);
+            obj.DataSet=data;
         end
       
         %here will be the function to analyse the spectrum 
@@ -202,7 +203,7 @@ classdef Naive_Bayes < handle
             colorFeatures=obj.compareSpectros(spectro);
 
             featureTuple=table( ...
-                tuple.redshift, ...
+                tuple.z, ...%redshift, ...
                 colorFeatures(:,1), ...
                 colorFeatures(:,2), ...
                 colorFeatures(:,3), ...
