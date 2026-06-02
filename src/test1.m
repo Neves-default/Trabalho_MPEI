@@ -13,7 +13,7 @@ dataManager = DataSetManager(pathFile,amountOfData);
 
 dataManager.loadData();
 data=dataManager.getData();
-%disp(data{:,"snMedian_r"})%["z" , "spectroFlux_u" , "spectroFlux_g" , "spectroFlux_r" , "spectroFlux_i" , "spectroFlux_z"]})
+disp(data{:,"snMedian_r"})%["z" , "spectroFlux_u" , "spectroFlux_g" , "spectroFlux_r" , "spectroFlux_i" , "spectroFlux_z"]})
 %==========================================================================
 %machineLearning=Naive_Bayes(data);
 
@@ -49,9 +49,9 @@ data=dataManager.getData();
 
 %==========================================================================
 
-adapter=Translator(data);
-tableAdapted=adapter.buildTranslatedTabel();
-disp(tableAdapted.finalData);
+%adapter=Translator(data);
+%tableAdapted=adapter.buildTranslatedTabel();
+%disp(tableAdapted.finalData);
 
 %funciona lets goooo omggg :))))))))))))))))))
 %==========================================================================

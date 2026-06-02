@@ -3,6 +3,7 @@
 %=========================================================================
 function [results,times,t,z,vd]=testNaiveBayes(test,path,numOfTests,Naive_Bayes_with_gassian_log)
     amountData=20000;
+    sizeFilter=2000;
     columns=["class", ...            %class
                 "z", ...                %redshift
                 "spectroFlux_u", ...    %ultraviolet
@@ -26,7 +27,7 @@ function [results,times,t,z,vd]=testNaiveBayes(test,path,numOfTests,Naive_Bayes_
         end
         amountLearningData=i*10;
         cronometer=tic;
-        [NaiveBayesResult,t]=t.testNaiveBayes(amountLearningData,numOfTests,Naive_Bayes_with_gassian_log,3);
+        [NaiveBayesResult,t]=t.testNaiveBayes(amountLearningData,sizeFilter,numOfTests,Naive_Bayes_with_gassian_log,3);
         times(i)=toc(cronometer);
         results(i) = sum(diag(NaiveBayesResult))/numOfTests;
     end
@@ -101,14 +102,135 @@ function testing()
     test.showStatisticsBloomFilter(n,k,occupancy,fakePositives,negativesTested,numElemInsert)
 end
 
-function menu()
+function executeNaiveBayes(data,bayes)
+    isFromDataSet=input("Os dados sobre o objeto provêm do dataSet(Y/n):","s");
+            if (isempty(data))
+                disp("Data is not load")
+                return;
+            end
+            if strcmpi(isFromDataSet,"y")
+                idx=str2double(input("Em que linnha ele se encontra?","s"));
+                selectedData=data(idx,:);
+                z=selectedData.z;
+                spectroFlux_u=selectedData.spectroFlux_u;
+                spectroFlux_g=selectedData.spectroFlux_g;
+                spectroFlux_r=selectedData.spectroFlux_r;
+                spectroFlux_i=selectedData.spectroFlux_i;
+                spectroFlux_z=selectedData.spectroFlux_z;
+                velDisp=selectedData.velDisp;
+                snMedian_r=selectedData.snMedian_r;
+            else
+                z=str2double(input("redshift:","s"));
+                spectroFlux_u=str2double(input("spectroFlux_u:","s"));
+                spectroFlux_g=str2double(input("spectroFlux_g:","s"));
+                spectroFlux_r=str2double(input("spectroFlux_r:","s"));
+                spectroFlux_i=str2double(input("spectroFlux_i:","s"));
+                spectroFlux_z=str2double(input("spectroFlux_z:","s"));
+                velDisp=str2double(input("Veldisp:","s"));
+                snMedian_r=str2double(input("snMedian_r(1-50):","s"));
+            end
+            tuple=table( ...
+                z, ...
+                spectroFlux_u, ...
+                spectroFlux_g, ...
+                spectroFlux_r, ...
+                spectroFlux_i, ...
+                spectroFlux_z, ...
+                velDisp, ...
+                snMedian_r, ...
+                'VariableNames', { ...
+                'z', ...
+                'spectroFlux_u', ...
+                'spectroFlux_g', ...
+                'spectroFlux_r', ...
+                'spectroFlux_i', ...
+                'spectroFlux_z', ...
+                'velDisp', ...
+                'snMedian_r' ...
+                });
+            
+            displayResults(bayes.estimateClass(tuple,1),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
+end
+
+function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r)
+    disp("==================Results==================")
+    disp("Object type:"+bayesResult)
+    disp("===========================================")
+    disp("Given Data")
+    disp("  ->redshift:"+z)
+    disp("  ->spectroFlux_u:"+spectroFlux_u)
+    disp("  ->spectroFlux_g:"+spectroFlux_g)
+    disp("  ->spectroFlux_r:"+spectroFlux_r)
+    disp("  ->spectroFlux_i:"+spectroFlux_i)
+    disp("  ->spectroFlux_z:"+spectroFlux_z)
+    disp("  ->velDisp:"+velDisp)
+    disp("  ->snMedian_r:"+snMedian_r)
+    disp("===========================================")
+end
+
+function parsing(data,cmd,bayes)
+    switch upper(cmd)
+        case "IDEN"
+            executeNaiveBayes(data,bayes)
+        case "SEM"
+        case "TEST"
+        case "HELP"
+    end
+end
+
+function displayMenu()
     disp("======================================================")
     disp("Seja bem-vindo ao identificador de objetos planetários")
     disp("======================================================")
     disp("O que pretende fazer?")
-    disp("-> : Indentificar objeto")
-    disp("->S : Ver objetos semelhantes")
+    disp("-> IDEN: Indentificar objeto")
+    disp("-> SEM: Ver objetos semelhantes")
+    disp("-> TEST: Testar algoritmos")
+    disp("-> HELP: rever opções")
+    disp("-> QUIT: sair do programa")
+    disp("======================================================")
 end
+
+function [data,bayes]=loadsAlgorithms()
+    amountOfData=1000;
+    fileName='DataSet.csv';
+    pathFile=fullfile('/home/neves-default/Secretária/universidade de Aveiro/2ºano/2º semestre/Metodos_probabilisticos_EI/Projeto/Trabalho_Pratico/',fileName);
+    
+    dataManager = DataSetManager(pathFile,amountOfData);
+    dataManager.loadData();
+    data=dataManager.getData();
+
+    %Naive Bayes
+    sizeFilter=2000;
+    bayes=Naive_Bayes(data,sizeFilter);
+    bayes=bayes.buildFeature();
+    bayes=bayes.Average;
+    bayes=bayes.StandartDeviation();
+    bayes=bayes.getEachClassesData();
+
+    %Min Hash
+    adapter=Translator(data);
+    tableAdapted=adapter.buildTranslatedTabel();
+end
+
+function ui()
+    mode=input("Quer executar a aplicação em mode de teste Y/n):","s");
+    if strcmpi(mode,"y")
+        testing();
+        return
+    end
+    [data,bayes]=loadsAlgorithms();
+    displayMenu()
+    while true
+        cmd=input(">","s");
+        parsing(data,cmd,bayes)
+    end
+end
+
+
+ui()
+
+
 
 
 

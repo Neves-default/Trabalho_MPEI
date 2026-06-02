@@ -84,13 +84,6 @@ classdef Naive_Bayes < handle
     	    diferences(:,3) = -2.5 * log10(r ./ i); % r-i
     	   diferences(:,4) = -2.5 * log10(i ./ z); % i-z
         end
-
-        function h = string2hash(obj,str)
-            h = double(0);
-            for i = 1:length(str)
-                h = mod(h * 31 + double(str(i)), 2^31 - 1);
-            end
-        end
         
         %here we will join everything and buil the feature table, where the
         %Naive Bayes algorithm will learn to classify the objects though
@@ -149,7 +142,7 @@ classdef Naive_Bayes < handle
                     obj.Data.velDisp(idx), ...
                     obj.Data.snMedian_r(idx));
                 %adding the values on the data set to the bloon filter
-                obj.filter=obj.filter.addElement(obj.string2hash(key));
+                obj.filter=obj.filter.addElement(key);
             end
         end
         
@@ -257,19 +250,14 @@ classdef Naive_Bayes < handle
                     featureTuple.velDisp, ...
                     featureTuple.snMedian_r);
 
-            if obj.BelongsToTranningSet(key)==true
-                classes = obj.Data( ...
+            if obj.BelongsToTranningSet()==true
+                rows = obj.Data( ...
                     obj.Data.redshift == featureTuple.redshift & ...
                     obj.Data.u_g == featureTuple.u_g & ...
                     obj.Data.g_r == featureTuple.g_r & ...
-                    obj.Data.r_i == featureTuple.r_i & ...
+                    obj.Data.z_i == featureTuple.r_i & ...
                     obj.Data.i_z == featureTuple.i_z & ...
-                    obj.Data.velDisp == featureTuple.velDisp & ...
-                    obj.Data.snMedian_r == featureTuple.snMedian_r, :).class;
-                class=classes;
-                if (~isempty(class))
-                    return;
-                end
+                    obj.Data.velDisp ==featureTuplevelDisp, :);
             end
             
             %calculate probs
@@ -307,7 +295,7 @@ classdef Naive_Bayes < handle
         end
 
         function [isFromTrainninSet]=BelongsToTranningSet(obj,key)
-            isFromTrainninSet=obj.filter.isElementInFilter(obj.string2hash(key));
+            isFromTrainninSet=obj.filter.isElementInFilter(key);
         end
     end
 end

@@ -26,17 +26,17 @@ classdef tests
             obj.data=manager.filter(columnsNeeded);
         end
 
-        function [naiveBayesAlgorithm]=ConfiguringNaiveBayes(obj,amount)
+        function [naiveBayesAlgorithm]=ConfiguringNaiveBayes(obj,amount,sizeFilter)
             learningSet = obj.data(amount+1:end,:);
             %break part of the data
-            naiveBayesAlgorithm=Naive_Bayes(learningSet);
+            naiveBayesAlgorithm=Naive_Bayes(learningSet,sizeFilter);
             naiveBayesAlgorithm.buildFeature();
             naiveBayesAlgorithm.Average;
             naiveBayesAlgorithm.StandartDeviation();
             naiveBayesAlgorithm.getEachClassesData();
         end
 
-        function [results, obj]=testNaiveBayes(obj,amount,numOftests,using_gassian_log,numClasses)
+        function [results, obj]=testNaiveBayes(obj,amount,sizeFilter,numOftests,using_gassian_log,numClasses)
             % test with diferent amounts(diferente from the original data)
             % checkng the right and wrong results
             % generating grafics and results from the tests
@@ -46,7 +46,7 @@ classdef tests
             obj.redshifts=zeros(3,numOftests);
             obj.velpdisps=zeros(3,numOftests);
             obj.distribution=zeros(1,3);
-            algorithm=obj.ConfiguringNaiveBayes(amount);
+            algorithm=obj.ConfiguringNaiveBayes(amount,sizeFilter);
             results=zeros(numClasses);
             for i=1:numOftests
                 line=randi([1 size(testSet,1)]);
