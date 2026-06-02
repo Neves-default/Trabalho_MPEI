@@ -1,3 +1,9 @@
 DataSet.csv
 *.asv
 test_minhash.m
+src/SimpleAccuracyTest.m
+MinhashStressTest.m
+MinhashStressTest2.m
+MinhashStressTest3.m
+SimpleAccuracyTest.m
+AccuracyTest.m

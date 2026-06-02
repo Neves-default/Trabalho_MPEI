@@ -33,7 +33,12 @@ classdef MinHash < handle
             % value in table
             % This function should return the new table without duplicate
             % values
-            table_matrix = table2array(table(:, 2:end));
+            % Convert categorical text labels to numeric IDs (1, 2, 3...)
+            classNumeric = double(table.class);
+            % Extract the remaining numerical features (columns 2 to end)
+            table_matrix_from_2 = table2array(table(:, 2:end));
+            % Combine them back into a single full matrix (Now 8 columns!)
+            table_matrix = [classNumeric, table_matrix_from_2];
             maxValue = max(table_matrix(:));           % Find the maximum value in the table
             multiplier = 100;                   % Set the multiplier to be greater than max value
             if maxValue > 100                   % In Translator code it maps quantiles from 1 to 50
@@ -88,7 +93,11 @@ classdef MinHash < handle
             % Then it should return the array with the arrays corresponding
             % to the pairs found
             % >> Check functions from PL7 to do this
-            identical = zeros(n, 3);            % Pre-allocate for efficiency
+            % Compute maximum possible pairs to avoid out-of-bounds index exceptions
+            max_possible_pairs = (n * (n - 1)) / 2;
+            % If dataset is extremely large, cap dynamic memory overhead allocations safely
+            allocation_size = min(max_possible_pairs, 100000);
+            identical = zeros(allocation_size, 3);            % Pre-allocate for efficiency
             idx = 1;                            % Index to populate the identical matrix
             
             for i = 1 : n
@@ -110,6 +119,7 @@ classdef MinHash < handle
                     end
                 end
             end
+            identical = identical(1:idx-1, :);
         end
     end
 end
