@@ -15,12 +15,12 @@ classdef MinHash < handle
             obj.table = table;
             obj.threshold = threshold;
             obj.k = k;
-            obj.uniquetable = getUniqueValuesTable(obj.table);
-            obj.n = size(uniquetable, 1);       % It should be the same as the original table dimension
-            obj.signatures = getSignatures(obj.uniquetable, obj.k, obj.n);
-            obj.identical = getIdenticalObjs(obj.signatures, obj.threshold, obj.k, obj.n);
+            obj.uniquetable = obj.getUniqueValuesTable(obj.table);
+            obj.n = size(obj.uniquetable, 1);       % It should be the same as the original table dimension
+            obj.signatures = obj.getSignatures(obj.uniquetable, obj.k, obj.n);
+            obj.identical = obj.getIdenticalObjs(obj.signatures, obj.threshold, obj.k, obj.n);
         end
-        function [uniquetable] = getUniqueValuesTable(table)
+        function [uniquetable] = getUniqueValuesTable(obj, table)
             % In the table, the values in the columns are the index of each
             % quantile so they can be repeated across the different columns
             % (they all start at one and increment by one)
@@ -33,19 +33,20 @@ classdef MinHash < handle
             % value in table
             % This function should return the new table without duplicate
             % values
-            maxValue = max(table(:));           % Find the maximum value in the table
+            table_matrix = table2array(table(:, 2:end));
+            maxValue = max(table_matrix(:));           % Find the maximum value in the table
             multiplier = 100;                   % Set the multiplier to be greater than max value
             if maxValue > 100                   % In Translator code it maps quantiles from 1 to 50
                 multiplier = maxValue + 1;      % So values should not be greater than that
             end                                 % However here's a check just in case
             % We do maxValue + 100 if there's a value greater than 100
-            uniquetable = zeros(size(table));   % Initialize the unique table
-            for col = 1:size(table, 2)
+            uniquetable = zeros(size(table_matrix));   % Initialize the unique table
+            for col = 1:size(table_matrix, 2)
                 % Shift values
-                uniquetable(:, col) = table(:, col) + (col - 1) * multiplier;
+                uniquetable(:, col) = table_matrix(:, col) + (col - 1) * multiplier;
             end
         end
-        function [signatures] = getSignatures(uniquetable, k, n)
+        function [signatures] = getSignatures(obj, uniquetable, k, n)
             % This function will aplly the MinHash to create signatures
             % and add them all to the array signatures, returning it
             % >> Check functions from PL7 to do this
@@ -61,7 +62,7 @@ classdef MinHash < handle
             b = randi([0, p-1], 1, k);
             % Init the signatures array with infinites because we will do
             % the minimum element so we should not have 0
-            signatures = inf(Nu, k);
+            signatures = inf(n, k);
             for i = 1 : n
                 nvect = uniquetable(i, :);      % Vector with line i object's data                
                 % nvect should be a column vector because of MATLAB's broadcasting
@@ -79,7 +80,7 @@ classdef MinHash < handle
                 signatures(i, :) = min(hash_values, [], 1);
             end
         end
-        function [identical] = getIdenticalObjs(signatures, threshold, k, n)
+        function [identical] = getIdenticalObjs(obj, signatures, threshold, k, n)
             % This function should compare all the signatures and, for each
             % pair, add to the identical array a matrix with the two
             % objects and their Jaccard distance (matrix n x 3 where each
@@ -104,7 +105,7 @@ classdef MinHash < handle
                     % calculated distance (approximately) is less than the
                     % defined threshold
                     if jac_dist <= threshold
-                        identical(idx, :) = [users(i), users(j), jac_dist];
+                        identical(idx, :) = [i, j, jac_dist];
                         idx = idx + 1;
                     end
                 end
