@@ -71,7 +71,7 @@ classdef MinHash < handle
             obj.signatures = obj.getSignatures(obj.uniquetable, obj.k, obj.n);
             obj.identical = obj.getIdenticalObjs(obj.signatures, obj.threshold, obj.k, obj.n);
         end
-        function [uniquetable] = getUniqueValuesTable(obj, table)
+        function [uniquetable] = getUniqueValuesTable(obj, dataTable)
             % In the table, the values in the columns are the index of each
             % quantile so they can be repeated across the different columns
             % (they all start at one and increment by one)
@@ -84,10 +84,10 @@ classdef MinHash < handle
             % value in table
             % This function should return the new table without duplicate
             % values
-            % Convert categorical text labels to numeric IDs (1, 2, 3...)
-            classNumeric = double(table.class);
+            % Convert categorical text labels to numeric IDs (1, 2, 3).
+            classNumeric = double(categorical(dataTable.class));
             % Extract the remaining numerical features (columns 2 to end)
-            table_matrix_from_2 = table2array(table(:, 2:end));
+            table_matrix_from_2 = table2array(dataTable(:, 2:end));
             % Combine them back into a single full matrix (Now 8 columns!)
             table_matrix = [classNumeric, table_matrix_from_2];
             maxValue = max(table_matrix(:));           % Find the maximum value in the table

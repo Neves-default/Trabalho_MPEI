@@ -163,26 +163,6 @@ function executeNaiveBayes(data,bayes)
             displayResults(bayes.estimateClass(tuple,1),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
 end
 
-function executeMinHash(tableAdapted)
-    threshold = 0.45; 
-    k = 1000; 
-    mh=MinHash(tableAdapted,threshold,k);
-    uniqueTable=mh.getUniqueValuesTable(tableAdapted);
-    n=50;
-    signatures=mh.getSignatures(uniqueTable,k,n);
-    identical=mh.getIdenticalObjs(signatures,threshold,k,n);
-    disp("===============Results-MinHash================")
-    disp("==========Configuration======================")
-    disp("      ->K (Hash Functions): " + k)
-    disp("      ->Total Pairs Tested: " + (n * (n - 1)) / 2)
-    disp("==========Similarity Results=================")
-    for p = 1:length(identical(:,1))
-        disp("      ->Pair [" + identical(p,1) + ", " + identical(p,2) + "]" + ...
-            "  Dist: "+ identical(p,3));
-    end
-    disp("==============================================")
-end
-
 function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r)
     disp("==================Results==================")
     disp("Object type:"+bayesResult)
@@ -199,12 +179,58 @@ function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,
     disp("===========================================")
 end
 
-function parsing(data,cmd,bayes,tableAdapted)
+function executeMinHash(data)
+    if isempty(data)
+        disp("Data is not loaded");
+        return;
+    end
+
+    interval = input("Pretende ver a semelhança de um intervalo? (y/n): ", "s");
+
+    % Traduz SEMPRE o dataset completo
+    adapter      = Translator(data);
+    tableAdapted = adapter.buildTranslatedTabel();
+    threshold    = 0.5;
+    k            = 1000;
+
+    mh       = MinHash(tableAdapted.finalData, threshold, k);
+    identical = mh.identical;
+
+    % Filtra os resultados depois
+    if strcmpi(interval, "y")
+        startIdx = str2double(input("Start: ", "s"));
+        endIdx   = str2double(input("End: ",   "s"));
+        mask     = (identical(:,1) >= startIdx & identical(:,1) <= endIdx) | ...
+                   (identical(:,2) >= startIdx & identical(:,2) <= endIdx);
+        identical = identical(mask, :);
+    else
+        idx  = str2double(input("Em que linha ele se encontra? ", "s"));
+        mask = identical(:,1) == idx | identical(:,2) == idx;
+        identical = identical(mask, :);
+    end
+
+    disp("===============Results-MinHash================")
+    disp("==========Configuration======================")
+    disp("      ->K (Hash Functions): "  + k)
+    disp("      ->Total Pairs Tested: "  + (mh.n * (mh.n - 1)) / 2)
+    disp("==========Similarity Results=================")
+    if isempty(identical)
+        disp("      Nenhum par semelhante encontrado com threshold=" + threshold);
+    else
+        for p = 1:size(identical, 1)
+            disp("      ->Pair [" + identical(p,1) + ", " + identical(p,2) + "]" + ...
+                 "  Dist: " + identical(p,3));
+        end
+    end
+    disp("==============================================")
+end
+
+function parsing(data,cmd,bayes)
     switch upper(cmd)
         case "IDEN"
             executeNaiveBayes(data,bayes)
         case "SEM"
-            executeMinHash(tableAdapted)
+            executeMinHash(data)
     end
 end
 
@@ -221,31 +247,30 @@ function displayMenu()
     disp("======================================================")
 end
 
-function [data,bayes,tableAdapted]=loadsAlgorithms()
+function [finalData,bayes]=loadsAlgorithms()
     amountOfData=1000;
     fileName='DataSet.csv';
     pathFile=fullfile('/home/neves-default/Secretária/universidade de Aveiro/2ºano/2º semestre/Metodos_probabilisticos_EI/Projeto/Trabalho_Pratico/',fileName);
     
     dataManager = DataSetManager(pathFile,amountOfData);
     dataManager.loadData();
-    data=dataManager.getData();
-
+    finalData=dataManager.filter(["class", ...            %class
+                "z", ...                %redshift
+                "spectroFlux_u", ...    %ultraviolet
+                "spectroFlux_g", ...    %blue or violette
+                "spectroFlux_r", ...    %red
+                "spectroFlux_i", ...    %high infra-red
+                "spectroFlux_z", ...    %low infra-red
+                "velDisp", ...          %dispersion level
+                "snMedian_r" ...        %precision
+                ]);
     %Naive Bayes
     sizeFilter=2000;
-    bayes=Naive_Bayes(data,sizeFilter,0);
+    bayes=Naive_Bayes(finalData,sizeFilter,0);
     bayes=bayes.buildFeature();
     bayes=bayes.Average();
     bayes=bayes.StandartDeviation();
     bayes=bayes.getEachClassesData();
-
-    %Min Hash
-    adapter=Translator(data);
-    tableAdapted=adapter.buildTranslatedTabel();
-    threshold = 0.45; 
-    k = 1000; 
-    mh=MinHash(tableAdapted,threshold,k);
-    uniqueTable=mh.getUniqueValuesTable(tableAdapted);
-    n=50;
 end
 
 function ui()
@@ -254,7 +279,7 @@ function ui()
         testing();
         return
     end
-    [data,bayes,tableAdapted]=loadsAlgorithms();
+    [data,bayes]=loadsAlgorithms();
     displayMenu()
     while true
         cmd=input(">","s");
@@ -264,11 +289,12 @@ function ui()
         end
         if strcmpi(cmd,"test")
             testing();
+            break
         end
         if strcmpi(cmd,"help")
             displayMenu();
         else
-            parsing(data,cmd,bayes,tableAdapted);
+            parsing(data,cmd,bayes);
         end
     end
 end
