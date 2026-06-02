@@ -41,11 +41,13 @@ classdef Naive_Bayes < handle
         AvgPerClass
         DeviationPerClass
         %bloonFilter
-        filter
+        bloonFilter
         sizeFilter
+        %test
+        isTest
     end
     methods
-        function obj=Naive_Bayes(data,sizeFilter)
+        function obj=Naive_Bayes(data,sizeFilter,isTest)
             %filter for Naive_Bayes classifier calculation 
             %obj.DataSet = data(:, [ ...
             %    "class", ...            %class
@@ -59,12 +61,15 @@ classdef Naive_Bayes < handle
             %    "snMedian_r" ...        %precision
             %    ]);
             obj.DataSet=data;
-            obj.filter=BloomFilter();
-            obj.filter=obj.filter.initializeDataStructure(sizeFilter);
-            optimalK=round(sizeFilter * log(2) / length(data.z)); % Optimal k formula
-            k = max(10, 2 * optimalK);
-            obj.sizeFilter=sizeFilter;
-            obj.filter=obj.filter.defineParams(k);
+            obj.isTest=isTest
+            if isTest==1
+                obj.bloonFilter=BloomFilter();
+                obj.bloonFilter=obj.bloonFilter.initializeDataStructure(sizeFilter);
+                optimalK=round(sizeFilter * log(2) / length(data.z)); % Optimal k formula
+                k = max(10, 2 * optimalK);
+                obj.sizeFilter=sizeFilter;
+                obj.bloonFilter=obj.bloonFilter.defineParams(k);
+            end
         end
       
         %here will be the function to analyse the spectrum 
@@ -84,11 +89,18 @@ classdef Naive_Bayes < handle
     	    diferences(:,3) = -2.5 * log10(r ./ i); % r-i
     	   diferences(:,4) = -2.5 * log10(i ./ z); % i-z
         end
+
+        function h = string2hash(obj,str)
+            h = double(0);
+            for i = 1:length(str)
+                h = mod(h * 31 + double(str(i)), 2^31 - 1);
+            end
+        end
         
         %here we will join everything and buil the feature table, where the
         %Naive Bayes algorithm will learn to classify the objects though
         %their spectro
-        function obj=buildFeature(obj)
+        function obj=buildFeature(obj,isTest)
             %first get each flux data from the dataSet
             u=obj.DataSet.spectroFlux_u;
             g=obj.DataSet.spectroFlux_g;
@@ -131,18 +143,19 @@ classdef Naive_Bayes < handle
             %removes the values that aren't valid
             obj.Data = rmmissing(obj.Data);
             obj.Data = obj.Data(all(isfinite(obj.Data{:,2:end}),2), :);
-           
-            for idx=1:height(obj.Data)
-                key = sprintf('%.6f_%.6f_%.6f_%.6f_%.6f_%.6f_%.6f', ...
-                    obj.Data.redshift(idx), ...
-                    obj.Data.u_g(idx), ...
-                    obj.Data.g_r(idx), ...
-                    obj.Data.r_i(idx), ...
-                    obj.Data.i_z(idx), ...
-                    obj.Data.velDisp(idx), ...
-                    obj.Data.snMedian_r(idx));
-                %adding the values on the data set to the bloon filter
-                obj.filter=obj.filter.addElement(key);
+            if isTest==1
+                for idx=1:height(obj.Data)
+                    key = sprintf('%.6f_%.6f_%.6f_%.6f_%.6f_%.6f_%.6f', ...
+                        obj.Data.redshift(idx), ...
+                        obj.Data.u_g(idx), ...
+                        obj.Data.g_r(idx), ...
+                        obj.Data.r_i(idx), ...
+                        obj.Data.i_z(idx), ...
+                        obj.Data.velDisp(idx), ...
+                        obj.Data.snMedian_r(idx));
+                    %adding the values on the data set to the bloon filter
+                    obj.bloonFilter=obj.bloonFilter.addElement(obj.string2hash(key));
+                end
             end
         end
         
@@ -205,7 +218,7 @@ classdef Naive_Bayes < handle
             end
         end
 
-        function [class]=estimateClass(obj,tuple,useLog)
+        function [class]=estimateClass(obj,tuple,useLog,isTest)
             %first get each flux data from the dataSet
             u=tuple.spectroFlux_u;
             g=tuple.spectroFlux_g;
@@ -241,7 +254,8 @@ classdef Naive_Bayes < handle
                     'velDisp', ...
                     'snMedian_r' ...
             });
-            key = sprintf('%.6f_%.6f_%.6f_%.6f_%.6f_%.6f_%.6f', ...
+            if isTest==1
+                key = sprintf('%.6f_%.6f_%.6f_%.6f_%.6f_%.6f_%.6f', ...
                     featureTuple.redshift, ...
                     featureTuple.u_g, ...
                     featureTuple.g_r, ...
@@ -250,14 +264,20 @@ classdef Naive_Bayes < handle
                     featureTuple.velDisp, ...
                     featureTuple.snMedian_r);
 
-            if obj.BelongsToTranningSet()==true
-                rows = obj.Data( ...
-                    obj.Data.redshift == featureTuple.redshift & ...
-                    obj.Data.u_g == featureTuple.u_g & ...
-                    obj.Data.g_r == featureTuple.g_r & ...
-                    obj.Data.z_i == featureTuple.r_i & ...
-                    obj.Data.i_z == featureTuple.i_z & ...
-                    obj.Data.velDisp ==featureTuplevelDisp, :);
+                if obj.BelongsToTranningSet(key)==true
+                    classes = obj.Data( ...
+                        obj.Data.redshift == featureTuple.redshift & ...
+                        obj.Data.u_g == featureTuple.u_g & ...
+                        obj.Data.g_r == featureTuple.g_r & ...
+                        obj.Data.r_i == featureTuple.r_i & ...
+                        obj.Data.i_z == featureTuple.i_z & ...
+                        obj.Data.velDisp == featureTuple.velDisp & ...
+                        obj.Data.snMedian_r == featureTuple.snMedian_r, :).class;
+                    class=classes;
+                    if (~isempty(class))
+                        return;
+                    end
+                end
             end
             
             %calculate probs
@@ -295,7 +315,7 @@ classdef Naive_Bayes < handle
         end
 
         function [isFromTrainninSet]=BelongsToTranningSet(obj,key)
-            isFromTrainninSet=obj.filter.isElementInFilter(key);
+            isFromTrainninSet=obj.bloonFilter.isElementInFilter(obj.string2hash(key));
         end
     end
 end

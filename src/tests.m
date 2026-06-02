@@ -29,7 +29,7 @@ classdef tests
         function [naiveBayesAlgorithm]=ConfiguringNaiveBayes(obj,amount,sizeFilter)
             learningSet = obj.data(amount+1:end,:);
             %break part of the data
-            naiveBayesAlgorithm=Naive_Bayes(learningSet,sizeFilter);
+            naiveBayesAlgorithm=Naive_Bayes(learningSet,sizeFilter,1);
             naiveBayesAlgorithm.buildFeature();
             naiveBayesAlgorithm.Average;
             naiveBayesAlgorithm.StandartDeviation();

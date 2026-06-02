@@ -3,7 +3,7 @@
 %=========================================================================
 function [results,times,t,z,vd]=testNaiveBayes(test,path,numOfTests,Naive_Bayes_with_gassian_log)
     amountData=20000;
-    sizeFilter=5000;
+    sizeFilter=1000;
     columns=["class", ...            %class
                 "z", ...                %redshift
                 "spectroFlux_u", ...    %ultraviolet
@@ -108,8 +108,8 @@ function executeNaiveBayes(data,bayes)
                 disp("Data is not load")
                 return;
             end
-            if isFromDataSet==upper("y")
-                idx=input("Em que linnha ele se encontra?","s");
+            if strcmpi(isFromDataSet,"y")
+                idx=str2double(input("Em que linnha ele se encontra?","s"));
                 selectedData=data(idx,:);
                 z=selectedData.z;
                 spectroFlux_u=selectedData.spectroFlux_u;
@@ -120,14 +120,14 @@ function executeNaiveBayes(data,bayes)
                 velDisp=selectedData.velDisp;
                 snMedian_r=selectedData.snMedian_r;
             else
-                z=input("redshift:","s");
-                spectroFlux_u=input("spectroFlux_u:","s");
-                spectroFlux_g=input("spectroFlux_g:","s");
-                spectroFlux_r=input("spectroFlux_r:","s");
-                spectroFlux_i=input("spectroFlux_i:","s");
-                spectroFlux_z=input("spectroFlux_z:","s");
-                velDisp=input("Veldisp:","s");
-                snMedian_r=input("snMedian_r(1-50):","s");
+                z=str2double(input("redshift:","s"));
+                spectroFlux_u=str2double(input("spectroFlux_u:","s"));
+                spectroFlux_g=str2double(input("spectroFlux_g:","s"));
+                spectroFlux_r=str2double(input("spectroFlux_r:","s"));
+                spectroFlux_i=str2double(input("spectroFlux_i:","s"));
+                spectroFlux_z=str2double(input("spectroFlux_z:","s"));
+                velDisp=str2double(input("Veldisp:","s"));
+                snMedian_r=str2double(input("snMedian_r(1-50):","s"));
             end
             tuple=table( ...
                 z, ...
@@ -203,8 +203,8 @@ function [data,bayes]=loadsAlgorithms()
     %Naive Bayes
     sizeFilter=2000;
     bayes=Naive_Bayes(data,sizeFilter);
-    bayes=bayes.buildFeature();
-    bayes=bayes.Average;
+    bayes=bayes.buildFeature(0);
+    bayes=bayes.Average();
     bayes=bayes.StandartDeviation();
     bayes=bayes.getEachClassesData();
 
@@ -215,7 +215,7 @@ end
 
 function ui()
     mode=input("Quer executar a aplicação em mode de teste Y/n):","s");
-    if (mode==upper("y"))
+    if strcmpi(mode,"y")
         testing();
         return
     end
@@ -223,9 +223,18 @@ function ui()
     displayMenu()
     while true
         cmd=input(">","s");
-        parsing(data,cmd,bayes)
+        if strcmpi(cmd,"quit")
+            disp("Clossing Program...")
+            break
+        end
+        if strcmpi(cmd,"help")
+            displayMenu();
+        else
+            parsing(data,cmd,bayes)
+        end
     end
 end
+
 
 ui()
 

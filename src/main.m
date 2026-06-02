@@ -2,8 +2,8 @@
 %================================Naive Bayes==============================
 %=========================================================================
 function [results,times,t,z,vd]=testNaiveBayes(test,path,numOfTests,Naive_Bayes_with_gassian_log)
-    amountData=20000;
-    sizeFilter=2000;
+    amountData=10000;
+    sizeFilter=10;
     columns=["class", ...            %class
                 "z", ...                %redshift
                 "spectroFlux_u", ...    %ultraviolet
@@ -149,7 +149,7 @@ function executeNaiveBayes(data,bayes)
                 'snMedian_r' ...
                 });
             
-            displayResults(bayes.estimateClass(tuple,1),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
+            displayResults(bayes.estimateClass(tuple,1,0),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
 end
 
 function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r)
@@ -202,9 +202,9 @@ function [data,bayes]=loadsAlgorithms()
 
     %Naive Bayes
     sizeFilter=2000;
-    bayes=Naive_Bayes(data,sizeFilter);
+    bayes=Naive_Bayes(data,sizeFilter,0);
     bayes=bayes.buildFeature();
-    bayes=bayes.Average;
+    bayes=bayes.Average();
     bayes=bayes.StandartDeviation();
     bayes=bayes.getEachClassesData();
 
@@ -223,7 +223,15 @@ function ui()
     displayMenu()
     while true
         cmd=input(">","s");
-        parsing(data,cmd,bayes)
+        if strcmpi(cmd,"quit")
+            disp("Clossing Program...")
+            break
+        end
+        if strcmpi(cmd,"help")
+            displayMenu();
+        else
+            parsing(data,cmd,bayes)
+        end
     end
 end
 
