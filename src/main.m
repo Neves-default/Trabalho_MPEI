@@ -77,7 +77,11 @@ function [k,occupancy,fakePositives,negativesTested]=testBloonFilter(test,amount
     occupancy=filterTest.getOccupancy();
     
 end
-
+%=========================================================================
+%===================================Min Hash==============================
+%=========================================================================
+function testMinHash()
+end
 function testing()
     %results for Naive Bayes
     test=tests();
@@ -149,7 +153,7 @@ function executeNaiveBayes(data,bayes)
                 'snMedian_r' ...
                 });
             
-            displayResults(bayes.estimateClass(tuple,1,0),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
+            displayResults(bayes.estimateClass(tuple,1),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
 end
 
 function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r)
@@ -173,14 +177,12 @@ function parsing(data,cmd,bayes)
         case "IDEN"
             executeNaiveBayes(data,bayes)
         case "SEM"
-        case "TEST"
-        case "HELP"
     end
 end
 
 function displayMenu()
     disp("======================================================")
-    disp("Seja bem-vindo ao identificador de objetos planetários")
+    disp("Seja bem-vindo ao identificador de objetos estrelares")
     disp("======================================================")
     disp("O que pretende fazer?")
     disp("-> IDEN: Indentificar objeto")
@@ -226,6 +228,9 @@ function ui()
         if strcmpi(cmd,"quit")
             disp("Clossing Program...")
             break
+        end
+        if strcmpi(cmd,"test")
+            testing();
         end
         if strcmpi(cmd,"help")
             displayMenu();

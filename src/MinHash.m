@@ -107,7 +107,7 @@ classdef MinHash < handle
             % and add them all to the array signatures, returning it
             % >> Check functions from PL7 to do this
             % n is the number of lines (objects) in uniquetable
-            maxValue = max(uniquetable);
+            maxValue = max(uniquetable(:));
             p = 999983;                         % Big prime
             if maxValue >= p
                 p = 10000019;                   % Even bigger prime if maxValue is greater than that big prime
@@ -174,4 +174,3 @@ classdef MinHash < handle
         end
     end
 end
->>>>>>> Minhash
