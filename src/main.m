@@ -80,7 +80,11 @@ end
 %=========================================================================
 %===================================Min Hash==============================
 %=========================================================================
-function testMinHash()
+function [k, pairs, trueSims, estSims, k_values, mean_errors]=testMinHash(test)
+    %->Similaridade real vs Similaridade estimada
+    %->Erro vs Número de hashes
+    test.testAccuracyTest();
+    [k, pairs, trueSims, estSims, k_values, mean_errors]=test.testMinHash();
 end
 function testing()
     %results for Naive Bayes
@@ -104,6 +108,9 @@ function testing()
     [k,occupancy,fakePositives,negativesTested]=testBloonFilter(test,amount_of_data,pathFile,n,numElemInsert,numSearches,numK);
 
     test.showStatisticsBloomFilter(n,k,occupancy,fakePositives,negativesTested,numElemInsert)
+    %minHash
+    [k, pairs, trueSims, estSims, k_values, mean_errors]=testMinHash(test);
+    test.showStatisticsMinHash(k, pairs, trueSims, estSims, k_values, mean_errors);
 end
 
 function executeNaiveBayes(data,bayes)
@@ -156,6 +163,26 @@ function executeNaiveBayes(data,bayes)
             displayResults(bayes.estimateClass(tuple,1),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
 end
 
+function executeMinHash(tableAdapted)
+    threshold = 0.45; 
+    k = 1000; 
+    mh=MinHash(tableAdapted,threshold,k);
+    uniqueTable=mh.getUniqueValuesTable(tableAdapted);
+    n=50;
+    signatures=mh.getSignatures(uniqueTable,k,n);
+    identical=mh.getIdenticalObjs(signatures,threshold,k,n);
+    disp("===============Results-MinHash================")
+    disp("==========Configuration======================")
+    disp("      ->K (Hash Functions): " + k)
+    disp("      ->Total Pairs Tested: " + (n * (n - 1)) / 2)
+    disp("==========Similarity Results=================")
+    for p = 1:length(identical(:,1))
+        disp("      ->Pair [" + identical(p,1) + ", " + identical(p,2) + "]" + ...
+            "  Dist: "+ identical(p,3));
+    end
+    disp("==============================================")
+end
+
 function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r)
     disp("==================Results==================")
     disp("Object type:"+bayesResult)
@@ -172,11 +199,12 @@ function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,
     disp("===========================================")
 end
 
-function parsing(data,cmd,bayes)
+function parsing(data,cmd,bayes,tableAdapted)
     switch upper(cmd)
         case "IDEN"
             executeNaiveBayes(data,bayes)
         case "SEM"
+            executeMinHash(tableAdapted)
     end
 end
 
@@ -193,7 +221,7 @@ function displayMenu()
     disp("======================================================")
 end
 
-function [data,bayes]=loadsAlgorithms()
+function [data,bayes,tableAdapted]=loadsAlgorithms()
     amountOfData=1000;
     fileName='DataSet.csv';
     pathFile=fullfile('/home/neves-default/Secretária/universidade de Aveiro/2ºano/2º semestre/Metodos_probabilisticos_EI/Projeto/Trabalho_Pratico/',fileName);
@@ -213,6 +241,11 @@ function [data,bayes]=loadsAlgorithms()
     %Min Hash
     adapter=Translator(data);
     tableAdapted=adapter.buildTranslatedTabel();
+    threshold = 0.45; 
+    k = 1000; 
+    mh=MinHash(tableAdapted,threshold,k);
+    uniqueTable=mh.getUniqueValuesTable(tableAdapted);
+    n=50;
 end
 
 function ui()
@@ -221,7 +254,7 @@ function ui()
         testing();
         return
     end
-    [data,bayes]=loadsAlgorithms();
+    [data,bayes,tableAdapted]=loadsAlgorithms();
     displayMenu()
     while true
         cmd=input(">","s");
@@ -235,7 +268,7 @@ function ui()
         if strcmpi(cmd,"help")
             displayMenu();
         else
-            parsing(data,cmd,bayes)
+            parsing(data,cmd,bayes,tableAdapted);
         end
     end
 end

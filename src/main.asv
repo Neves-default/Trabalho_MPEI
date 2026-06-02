@@ -2,8 +2,8 @@
 %================================Naive Bayes==============================
 %=========================================================================
 function [results,times,t,z,vd]=testNaiveBayes(test,path,numOfTests,Naive_Bayes_with_gassian_log)
-    amountData=20000;
-    sizeFilter=1000;
+    amountData=10000;
+    sizeFilter=10;
     columns=["class", ...            %class
                 "z", ...                %redshift
                 "spectroFlux_u", ...    %ultraviolet
@@ -77,7 +77,15 @@ function [k,occupancy,fakePositives,negativesTested]=testBloonFilter(test,amount
     occupancy=filterTest.getOccupancy();
     
 end
-
+%=========================================================================
+%===================================Min Hash==============================
+%=========================================================================
+function [k, pairs, trueSims, estSims, k_values, mean_errors]=testMinHash(test)
+    %->Similaridade real vs Similaridade estimada
+    %->Erro vs Número de hashes
+    test.testAccuracyTest();
+    [k, pairs, trueSims, estSims, k_values, mean_errors]=test.testMinHash();
+end
 function testing()
     %results for Naive Bayes
     test=tests();
@@ -100,6 +108,9 @@ function testing()
     [k,occupancy,fakePositives,negativesTested]=testBloonFilter(test,amount_of_data,pathFile,n,numElemInsert,numSearches,numK);
 
     test.showStatisticsBloomFilter(n,k,occupancy,fakePositives,negativesTested,numElemInsert)
+    %minHash
+    [k, pairs, trueSims, estSims, k_values, mean_errors]=testMinHash(test);
+    test.showStatisticsMinHash(k, pairs, trueSims, estSims, k_values, mean_errors);
 end
 
 function executeNaiveBayes(data,bayes)
@@ -152,6 +163,35 @@ function executeNaiveBayes(data,bayes)
             displayResults(bayes.estimateClass(tuple,1),z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r);
 end
 
+function executeMinHash(tableAdapted)
+    threshold = 0.45; 
+    k = 1000; 
+    mh=MinHash(tableAdapted,threshold,k);
+    uniqueTable=mh.getUniqueValuesTable(tableAdapted);
+    n=50;
+    signatures=mh.getSignatures(uniqueTable,k,n);
+    identical=mh.getIdenticalObjs(signatures,threshold,k,n);
+    disp("===============Results-MinHash================")
+    disp("==========Configuration======================")
+    disp("      ->K (Hash Functions): " + k)
+    disp("      ->Total Pairs Tested: " + (n * (n - 1)) / 2)
+    disp("==========Similarity Results=================")
+    for p = 1:length(identical(:,1))
+        disp("      ->Pair [" + identical(p,1) + ", " + pairs(p,2) + "]" + ...
+            "  Real: " + round(trueSims(p), 4) + ...
+            "  Est: "  + round(estSims(p),  4) + ...
+            "  Err: "  + round(abs(trueSims(p) - estSims(p)), 4))
+    end
+    disp("      ->AVG Error (k="+k+"): " + ...
+        round(mean(abs(trueSims - estSims)), 4))
+    disp("==========Error vs K=========================")
+    for ki = 1:length(k_values)
+        disp("      ->k=" + k_values(ki) + ...
+            "  AVG Error: " + round(mean_errors(ki), 4))
+    end
+    disp("==============================================")
+end
+
 function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,spectroFlux_i,spectroFlux_z,velDisp,snMedian_r)
     disp("==================Results==================")
     disp("Object type:"+bayesResult)
@@ -168,19 +208,18 @@ function displayResults(bayesResult,z,spectroFlux_u,spectroFlux_g,spectroFlux_r,
     disp("===========================================")
 end
 
-function parsing(data,cmd,bayes)
+function parsing(data,cmd,bayes,tableAdapted)
     switch upper(cmd)
         case "IDEN"
             executeNaiveBayes(data,bayes)
         case "SEM"
-        case "TEST"
-        case "HELP"
+            executeMinHash(tableAdapted)
     end
 end
 
 function displayMenu()
     disp("======================================================")
-    disp("Seja bem-vindo ao identificador de objetos planetários")
+    disp("Seja bem-vindo ao identificador de objetos estrelares")
     disp("======================================================")
     disp("O que pretende fazer?")
     disp("-> IDEN: Indentificar objeto")
@@ -191,7 +230,7 @@ function displayMenu()
     disp("======================================================")
 end
 
-function [data,bayes]=loadsAlgorithms()
+function [data,bayes,tableAdapted]=loadsAlgorithms()
     amountOfData=1000;
     fileName='DataSet.csv';
     pathFile=fullfile('/home/neves-default/Secretária/universidade de Aveiro/2ºano/2º semestre/Metodos_probabilisticos_EI/Projeto/Trabalho_Pratico/',fileName);
@@ -202,8 +241,8 @@ function [data,bayes]=loadsAlgorithms()
 
     %Naive Bayes
     sizeFilter=2000;
-    bayes=Naive_Bayes(data,sizeFilter);
-    bayes=bayes.buildFeature(0);
+    bayes=Naive_Bayes(data,sizeFilter,0);
+    bayes=bayes.buildFeature();
     bayes=bayes.Average();
     bayes=bayes.StandartDeviation();
     bayes=bayes.getEachClassesData();
@@ -211,6 +250,11 @@ function [data,bayes]=loadsAlgorithms()
     %Min Hash
     adapter=Translator(data);
     tableAdapted=adapter.buildTranslatedTabel();
+    threshold = 0.45; 
+    k = 1000; 
+    mh=MinHash(tableAdapted,threshold,k);
+    uniqueTable=mh.getUniqueValuesTable(tableAdapted);
+    n=50;
 end
 
 function ui()
@@ -219,7 +263,7 @@ function ui()
         testing();
         return
     end
-    [data,bayes]=loadsAlgorithms();
+    [data,bayes,tableAdapted]=loadsAlgorithms();
     displayMenu()
     while true
         cmd=input(">","s");
@@ -227,10 +271,13 @@ function ui()
             disp("Clossing Program...")
             break
         end
+        if strcmpi(cmd,"test")
+            testing();
+        end
         if strcmpi(cmd,"help")
             displayMenu();
         else
-            parsing(data,cmd,bayes)
+            parsing(data,cmd,bayes,tableAdapted);
         end
     end
 end
